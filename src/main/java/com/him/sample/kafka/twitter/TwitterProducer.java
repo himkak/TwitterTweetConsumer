@@ -10,8 +10,13 @@ import com.twitter.hbc.core.endpoint.StatusesFilterEndpoint;
 import com.twitter.hbc.core.processor.StringDelimitedProcessor;
 import com.twitter.hbc.httpclient.auth.Authentication;
 import com.twitter.hbc.httpclient.auth.OAuth1;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +36,9 @@ public class TwitterProducer {
         client.connect();
 
         //create kafka producer
+        KafkaProducer<String,String> kafkaProducer=getKafkaProducer();
+
+
 
         //loop to send tweets to kafka
 
@@ -44,9 +52,23 @@ public class TwitterProducer {
             }
             if(null!=msg) {
                 System.out.println(msg);
+                ProducerRecord<String, String> record= new ProducerRecord("twitter-topic",null,msg);
+                kafkaProducer.send(record);
             }
         }
         System.out.println("App ended");
+    }
+
+    private static KafkaProducer<String, String> getKafkaProducer() {
+        return new KafkaProducer(getProducerConfig()) ;
+    }
+
+    private static Properties getProducerConfig(){
+        Properties configs=new Properties();
+        configs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092");
+        configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        return configs;
     }
 
     private Client createTwitterClient(BlockingQueue<String> msgQueue) {
